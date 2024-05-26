@@ -13,8 +13,8 @@ namespace Edgegap.Editor.Api
     public class EdgegapAppApi : EdgegapApiBase
     {
         public EdgegapAppApi(
-            ApiEnvironment apiEnvironment, 
-            string apiToken, 
+            ApiEnvironment apiEnvironment,
+            string apiToken,
             EdgegapWindowMetadata.LogLevel logLevel = EdgegapWindowMetadata.LogLevel.Error)
             : base(apiEnvironment, apiToken, logLevel)
         {
@@ -40,10 +40,10 @@ namespace Edgegap.Editor.Api
             bool isSuccess = response.StatusCode == HttpStatusCode.OK; // 200
             if (!isSuccess)
                 return result;
-            
+
             return result;
         }
-        
+
         /// <summary>
         /// GET to v1/app
         /// - Get an application that will regroup application versions.
@@ -61,10 +61,10 @@ namespace Edgegap.Editor.Api
             bool isSuccess = response.StatusCode == HttpStatusCode.OK; // 200
             if (!isSuccess)
                 return result;
-            
+
             return result;
         }
-        
+
         /// <summary>
         /// PATCH to v1/app/{app_name}/version/{version_name}
         /// - Update an *existing* application version with new specifications.
@@ -83,7 +83,7 @@ namespace Edgegap.Editor.Api
             bool isSuccess = response.StatusCode == HttpStatusCode.OK; // 200
             if (!isSuccess)
                 return result;
-            
+
             return result;
         }
 
@@ -111,8 +111,8 @@ namespace Edgegap.Editor.Api
             return result;
         }
         #endregion // API Methods
-        
-        
+
+
         #region Chained API Methods
         /// <summary>
         /// PATCH and/or POST to v1/app/: Upsert an *existing* application version with new specifications.
@@ -135,9 +135,33 @@ namespace Edgegap.Editor.Api
                 CreateAppVersionRequest createAppVersionRequest = CreateAppVersionRequest.FromUpdateRequest(request);
                 result = await CreateAppVersion(createAppVersionRequest); // POST
             }
-            
+
             bool isSuccess = result.StatusCode == HttpStatusCode.OK; // 200
 
+            if (!isSuccess)
+                return result;
+
+            return result;
+        }
+
+        /// FORK CHANGE: Add DeleteApp method
+        /// <summary>
+        /// DELETE to v1/app
+        /// - Delete an application.
+        /// - API Doc | https://docs.edgegap.com/api/#tag/Applications/operation/application-delete
+        /// </summary>
+        /// <returns>
+        /// Http info with GetCreateAppResult data model
+        /// - Success: 200
+        /// - Fail: 401 (unauthorized), 400 (bad request)
+        /// </returns>
+        public async Task<EdgegapHttpResult<DeleteAppRequest>> DeleteApp(DeleteAppRequest request)
+        {
+            string relativePath = $"v1/app/{request.AppName}";
+            HttpResponseMessage response = await DeleteAsync(relativePath);
+            EdgegapHttpResult<DeleteAppRequest> result = new EdgegapHttpResult<DeleteAppRequest>(response);
+
+            bool isSuccess = response.StatusCode == HttpStatusCode.OK; // 200
             if (!isSuccess)
                 return result;
 

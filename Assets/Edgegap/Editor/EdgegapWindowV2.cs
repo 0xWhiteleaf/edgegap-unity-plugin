@@ -11,6 +11,7 @@ using Edgegap.Editor.Api;
 using Edgegap.Editor.Api.Models;
 using Edgegap.Editor.Api.Models.Requests;
 using Edgegap.Editor.Api.Models.Results;
+using Newtonsoft.Json;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEditor.UIElements;
@@ -113,7 +114,7 @@ namespace Edgegap.Editor
         public static void ShowEdgegapToolWindow()
         {
             EdgegapWindowV2 window = GetWindow<EdgegapWindowV2>();
-            window.titleContent = new GUIContent("Edgegap Hosting"); // MIRROR CHANGE: 'Edgegap Server Management' is too long for the tab space
+            window.titleContent = new GUIContent("Edgegap Hosting Fork"); // MIRROR CHANGE: 'Edgegap Server Management' is too long for the tab space
             window.maxSize = new Vector2(635, 900);
             window.minSize = window.maxSize;
         }
@@ -204,7 +205,7 @@ namespace Edgegap.Editor
             // this finds the placeholder and dynamically replaces it with a popup field
             VisualElement dropdownPlaceholder = rootVisualElement.Q<VisualElement>("MIRROR_CHANGE_PORT_HARDCODED");
             List<string> options = Enum.GetNames(typeof(ProtocolType)).Cast<string>().ToList();
-            _containerTransportTypeEnumInput = new PopupField<string>("Protocol Type", options, 0);
+            _containerTransportTypeEnumInput = new PopupField<string>("Protocol Type", options, 2);
             dropdownPlaceholder.Add(_containerTransportTypeEnumInput);
             // END MIRROR CHANGE
             _containerUseCustomRegistryToggle = rootVisualElement.Q<Toggle>(EdgegapWindowMetadata.CONTAINER_USE_CUSTOM_REGISTRY_TOGGLE_ID);
@@ -873,13 +874,19 @@ namespace Edgegap.Editor
             EdgegapWizardApi wizardApi = getWizardApi();
             EdgegapHttpResult initQuickStartResultCode = await wizardApi.InitQuickStart();
 
-            _apiTokenVerifyBtn.SetEnabled(true);
             _isApiTokenVerified = initQuickStartResultCode.IsResultCode204;
+            _apiTokenVerifyBtn.SetEnabled(true);
 
             if (!_isApiTokenVerified)
             {
                 SyncContainerEnablesToState();
                 return;
+            }
+            // FORK CHANGE: Automatically delete "unity-quick-start" application
+            else
+            {
+                EdgegapAppApi appApi = getAppApi();
+                await appApi.DeleteApp(new DeleteAppRequest("unity-quick-start"));
             }
 
             // Verified: Let's see if we have active registry credentials // TODO: This will later be a result model
@@ -1599,6 +1606,10 @@ namespace Edgegap.Editor
                     },
                 };
 
+                // FORK CHANGE: Load custom Edgegap config file
+                var streamReader = new StreamReader(Path.Join(Application.dataPath, "../", "EdgegapConfig.json"));
+                var edgegapConfig = JsonConvert.DeserializeObject<EdgegapConfig>(streamReader.ReadToEnd());
+
                 UpdateAppVersionRequest updateAppVerReq = new UpdateAppVersionRequest(_appNameInput.value) // MIRROR CHANGE: 'new()' not supported in Unity 2020
                 {
                     VersionName = _containerNewTagVersionInput.value,
@@ -1608,6 +1619,10 @@ namespace Edgegap.Editor
                     PrivateUsername = _containerUsernameInput.value,
                     PrivateToken = _containerTokenInput.value,
                     Ports = ports,
+                    // FORK CHANGE: Set new fields from config
+                    MaxDuration = edgegapConfig.MaxDuration,
+                    TimeToDeploy = edgegapConfig.TimeToDeploy,
+                    Envs = edgegapConfig.Envs.Select(env => new UpdateAppVersionRequest.EnvsData() { Key = env.Key, Value = env.Value, IsSecret = env.IsSecret }).ToArray(),
                 };
 
                 EdgegapHttpResult<UpsertAppVersionResult> updateAppVersionResult = await appApi.UpsertAppVersion(updateAppVerReq);
